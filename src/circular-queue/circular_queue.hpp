@@ -1,41 +1,64 @@
 #pragma once
 
+namespace my {
+
 template<typename T>
-static T* AllocateMem(int n) {
+static inline T* AllocateMem(int n) {
   return static_cast<T*>(::operator new(sizeof(T) * n));
+}
+
+static inline void DeallocateMem(void* buf) {
+  ::operator delete(buf);
+}
+
+template<typename T>
+static inline T& At(void* buf, int idx) {
+  return reinterpret_cast<T*>(buf)[idx];
+}
+
+template<typename T>
+static inline void* Ptr(void* buf, int idx) {
+  return static_cast<void*>(&reinterpret_cast<T*>(buf)[idx]);
 }
 
 template<typename T>
 class CircularQueue {
  public:
+  // just to be like stdlib collections
   typedef int size_type;
   typedef T value_type;
+  typedef value_type& reference;
+  typedef const value_type& const_reference;
+  typedef value_type* pointer;
+  typedef const value_type* const_pointer;
+
  private:
   size_type capacity_ = 2;
   size_type size_ = 0;
   size_type head_ = 0;
-  T* buffer_;
+  void* buffer_;
+
+  [[nodiscard]] size_type GetIdx(int i) const {
+    return (i + head_) % capacity_;
+  }
+
+  void AllocateAndCopy(size_type n) {
+    auto new_buf = AllocateMem<T>(n);
+    for (int i = 0; i < size_; i++) {
+      ::new (Ptr<T>(new_buf, i)) T(std::move(At<T>(buffer_, GetIdx(i))));
+    }
+    DeallocateMem(buffer_);
+    head_ = 0;  // because we moved to the beginning of the ne buffer
+    capacity_ = n;
+    buffer_ = new_buf;
+  }
 
   void ReallocateMemory() {
-    float mul;
     if (size_ == capacity_) {
-      mul = 2;
+      AllocateAndCopy(capacity_ * 2);
     } else if (size_ != 0 && size_ <= static_cast<float>(capacity_) / 4.0) {
-      mul = 0.5;
-    } else {
-      return;
+      AllocateAndCopy(capacity_ / 2);
     }
-
-    // Most efficient way to reallocate memory
-    auto new_buf = AllocateMem<T>(capacity_ * mul);
-    for (int i = 0; i < size_; i++) {
-      auto idx = (i + head_) % (capacity_ + 1);
-      ::new((void*)(new_buf + i)) T(std::move(buffer_[idx]));
-    }
-    delete buffer_;
-    head_ = 0; // because we moved to the beginning of the ne buffer
-    capacity_ *= mul;
-    buffer_ = new_buf;
   }
 
  public:
@@ -44,10 +67,9 @@ class CircularQueue {
     // raw-delete operator was used because raw memory was allocated
     // and manual iteration over left object to call destructor
     for (int i = 0; i < size_; i++) {
-      auto idx = (i + head_) % (capacity_ + 1);
-      buffer_[idx].~T();
+      At<T>(buffer_, GetIdx(i)).~T();
     }
-    ::operator delete(buffer_);
+    DeallocateMem(buffer_);
   }
 
   /**
@@ -56,8 +78,7 @@ class CircularQueue {
    */
   void Enqueue(const T& value) {
     ReallocateMemory();
-    auto idx = (head_ + size_) % capacity_;
-    ::new((void*)(buffer_ + idx)) T(value);
+    ::new (Ptr<T>(buffer_ + GetIdx(size_))) T(value);
     size_ = (size_ + 1) % (capacity_ + 1);
   }
 
@@ -65,8 +86,7 @@ class CircularQueue {
     ReallocateMemory();
     // MoveInsertable semantic. We allocate memory in our buffer and move object inside.
     // This is useful for std::unique_ptr.
-    auto idx = (head_ + size_) % capacity_;
-    ::new((void*)(buffer_ + idx)) T(std::move(value));
+    ::new (Ptr<T>(buffer_, GetIdx(size_))) T(std::move(value));
     size_ = (size_ + 1) % (capacity_ + 1);
   }
 
@@ -78,9 +98,7 @@ class CircularQueue {
    */
   void Dequeue() {
     // TODO: destroy object
-    buffer_[head_].~T();
-//    ::operator delete(buffer_, buffer_ + head_);
-//    auto a = std::move(buffer_[head_]);
+    At<T>(buffer_, head_).~T();
     size_ = (size_ - 1) % (capacity_ + 1);
     head_ = (head_ + 1) % capacity_;
     if (size_ < 0) size_ = 0;
@@ -109,23 +127,22 @@ class CircularQueue {
    * @return a reference of the queue head element.
    */
   const T& Head() const {
-    return buffer_[head_];
+    return At<T>(buffer_, head_);
   }
 
   T& Head() {
-    return buffer_[head_];
+    return At<T>(buffer_, head_);
   }
 
   /**
    * @return a reference of the queue tail element.
    */
   const T& Tail() const {
-    auto idx = (head_ + size_ - 1) % capacity_;
-    return buffer_[idx];
+    return At<T>(buffer_, GetIdx(size_ - 1));
   }
 
   T& Tail() {
-    auto idx = (head_ + size_ - 1) % capacity_;
-    return buffer_[idx];
+    return At<T>(buffer_, GetIdx(size_ - 1));
   }
 };
+}

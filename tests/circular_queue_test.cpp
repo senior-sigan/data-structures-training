@@ -4,7 +4,7 @@
 #include <memory>
 
 TEST(circular_queue, enqueue_and_peek_head) {
-  CircularQueue<int> queue{};
+  my::CircularQueue<int> queue{};
   ASSERT_EQ(queue.IsEmpty(), true);
   queue.Enqueue(42);
   ASSERT_EQ(queue.Tail(), 42);
@@ -15,7 +15,7 @@ TEST(circular_queue, enqueue_and_peek_head) {
 
 TEST(circular_queue, const_head) {
   struct A {
-    CircularQueue<int> queue_;
+    my::CircularQueue<int> queue_;
 
     A() {
       queue_.Enqueue(42);
@@ -36,7 +36,7 @@ TEST(circular_queue, const_head) {
 }
 
 TEST(circular_queue, check_size) {
-  CircularQueue<int> queue{};
+  my::CircularQueue<int> queue{};
   ASSERT_EQ(queue.Size(), 0);
   queue.Enqueue(42);
   ASSERT_EQ(queue.Size(), 1);
@@ -45,7 +45,7 @@ TEST(circular_queue, check_size) {
 }
 
 TEST(circular_queue, peek_head_and_tail) {
-  CircularQueue<int> queue{};
+  my::CircularQueue<int> queue{};
   queue.Enqueue(42);
   ASSERT_EQ(queue.Head(), 42);
   ASSERT_EQ(queue.Tail(), 42);
@@ -56,7 +56,7 @@ TEST(circular_queue, peek_head_and_tail) {
 }
 
 TEST(circular_queue, enq_and_deq) {
-  CircularQueue<int> queue{};
+  my::CircularQueue<int> queue{};
   ASSERT_EQ(queue.IsEmpty(), true);
   queue.Enqueue(42);
   ASSERT_EQ(queue.Size(), 1);
@@ -103,7 +103,7 @@ class ElementMovable {
 TEST(circular_queue, should_destroy_objects) {
   int destructions = 0;
   {
-    CircularQueue<ElementClonable> queue;
+    my::CircularQueue<ElementClonable> queue;
     queue.Enqueue(ElementClonable(&destructions));
     ASSERT_EQ(destructions, 1); // one destruction for copy
   }
@@ -113,7 +113,7 @@ TEST(circular_queue, should_destroy_objects) {
 TEST(circular_queue, deq_should_delete_object) {
   int destructions = 0;
   {
-    CircularQueue<ElementClonable> queue;
+    my::CircularQueue<ElementClonable> queue;
     queue.Enqueue(ElementClonable(&destructions));
     ASSERT_EQ(destructions, 1);  // one destruction for the copy
 
@@ -126,7 +126,7 @@ TEST(circular_queue, deq_should_delete_object) {
 TEST(circular_queue, deq_should_delete_movable_object) {
   int destructions = 0;
   {
-    CircularQueue<ElementMovable> queue;
+    my::CircularQueue<ElementMovable> queue;
     queue.Enqueue(ElementMovable(&destructions));
     queue.Enqueue(ElementMovable(&destructions));
     ASSERT_EQ(destructions, 0);  // no destructions because object was moved
@@ -138,7 +138,7 @@ TEST(circular_queue, deq_should_delete_movable_object) {
 }
 
 TEST(circular_queue, store_unique_ptr) {
-  CircularQueue<std::unique_ptr<int>> queue;
+  my::CircularQueue<std::unique_ptr<int>> queue;
   queue.Enqueue(std::make_unique<int>(42));
   ASSERT_EQ(*queue.Head().get(), 42);
   queue.Dequeue();
@@ -146,7 +146,7 @@ TEST(circular_queue, store_unique_ptr) {
 }
 
 TEST(circular_queue, cause_reallocation) {
-  CircularQueue<std::unique_ptr<int>> queue;
+  my::CircularQueue<std::unique_ptr<int>> queue;
   ASSERT_EQ(queue.Size(), 0);
   ASSERT_EQ(queue.Capacity(), 2);
   queue.Enqueue(std::make_unique<int>(1));
@@ -166,7 +166,7 @@ TEST(circular_queue, cause_reallocation) {
 }
 
 TEST(circular_queue, enqueue_dequeu_unique) {
-  CircularQueue<std::unique_ptr<int>> queue;
+  my::CircularQueue<std::unique_ptr<int>> queue;
   queue.Enqueue(std::make_unique<int>(42));
   queue.Enqueue(std::make_unique<int>(13));
   ASSERT_EQ(*queue.Head().get(), 42);
@@ -184,7 +184,7 @@ TEST(circular_queue, enqueue_dequeu_unique) {
 }
 
 TEST(circular_queue, shrink_memory) {
-  CircularQueue<std::unique_ptr<int>> queue;
+  my::CircularQueue<std::unique_ptr<int>> queue;
   queue.Enqueue(std::make_unique<int>(42));
   queue.Enqueue(std::make_unique<int>(13));
   queue.Enqueue(std::make_unique<int>(13));
