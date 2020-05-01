@@ -31,8 +31,8 @@ TEST(circular_queue, const_head) {
   };
 
   A a;
-  ASSERT_EQ(a.NonConst(), 42+42);
-  ASSERT_EQ(a.Const(), 42+42);
+  ASSERT_EQ(a.NonConst(), 42 + 42);
+  ASSERT_EQ(a.Const(), 42 + 42);
 }
 
 TEST(circular_queue, check_size) {
@@ -105,7 +105,7 @@ TEST(circular_queue, should_destroy_objects) {
   {
     my::CircularQueue<ElementClonable> queue;
     queue.Enqueue(ElementClonable(&destructions));
-    ASSERT_EQ(destructions, 1); // one destruction for copy
+    ASSERT_EQ(destructions, 1);  // one destruction for copy
   }
   ASSERT_EQ(destructions, 2);
 }
@@ -148,7 +148,7 @@ TEST(circular_queue, store_unique_ptr) {
 TEST(circular_queue, cause_reallocation) {
   my::CircularQueue<std::unique_ptr<int>> queue;
   ASSERT_EQ(queue.Size(), 0);
-  ASSERT_EQ(queue.Capacity(), 2);
+  ASSERT_EQ(queue.Capacity(), 0);
   queue.Enqueue(std::make_unique<int>(1));
   queue.Enqueue(std::make_unique<int>(2));
   queue.Enqueue(std::make_unique<int>(3));
@@ -198,4 +198,19 @@ TEST(circular_queue, shrink_memory) {
   queue.Dequeue();
   ASSERT_EQ(queue.Capacity(), 2);
   ASSERT_EQ(queue.Size(), 1);
+}
+
+TEST(circular_queue, deep_copy) {
+  my::CircularQueue<int> queue;
+  queue.Enqueue(42);
+  queue.Enqueue(13);
+  queue.Enqueue(7);
+
+  my::CircularQueue<int> queue2;
+  queue2 = queue;
+
+  ASSERT_EQ(queue2.Tail(), queue.Tail());
+  ASSERT_EQ(queue2.Head(), queue.Head());
+  ASSERT_EQ(queue2.Size(), queue.Size());
+  ASSERT_EQ(queue2.Capacity(), queue.Capacity());
 }
