@@ -42,12 +42,8 @@ function(add_style_check_target TARGET_NAME SOURCES_LIST)
         return()
     endif ()
 
-    message(BUM ${SOURCES_LIST})
-
     list(REMOVE_DUPLICATES SOURCES_LIST)
     list(SORT SOURCES_LIST)
-
-    message(BUM ${SOURCES_LIST})
 
     add_custom_target(${TARGET_NAME}
             COMMAND "${CMAKE_COMMAND}" -E chdir
