@@ -1,0 +1,8 @@
+numpy
+
+pytest
+
+mypy
+autopep8
+isort
+flake8
