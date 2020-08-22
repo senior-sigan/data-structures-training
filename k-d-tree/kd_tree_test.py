@@ -41,6 +41,24 @@ def test_should_find_closest_6():
     assert ind == [4]
 
 
+def test_should_find_n_closest_7():
+    kdtree = KDTree(dataset_2d)
+    dist, ind = kdtree.query(np.array([7, 1]), n=3)
+    assert ind == [5, 4, 1]
+
+
+def test_should_find_n_closest_8():
+    kdtree = KDTree(dataset_2d)
+    dist, ind = kdtree.query(np.array([3, 2]), n=3)
+    assert ind == [0, 1, 5]
+
+
+def test_should_find_n_closest_9():
+    kdtree = KDTree(dataset_3d)
+    dist, ind = kdtree.query(np.array([4, 5, 6]), n=3)
+    assert ind == [2, 3, 1]  # ????? падает!
+
+
 def test_dist():
     assert dist_l2(np.array([0, 0]), np.array([0, 1])) == 1
     assert dist_l2(np.array([0, -1]), np.array([0, 1])) == 2

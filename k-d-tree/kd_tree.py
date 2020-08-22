@@ -1,6 +1,7 @@
 from typing import List, Tuple, Callable, Optional
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import heapq
 
 
 @dataclass
@@ -10,6 +11,28 @@ class _Node:
     axis: int
     left: "Optional[_Node]"
     right: "Optional[_Node]"
+
+
+@dataclass(order=True)
+class _Candidate:
+    dist: float
+    idx: int = field(compare=False)
+
+
+def _priority_push(container: List[_Candidate], element: _Candidate, max_size: int) -> None:
+    element.dist *= -1  # hack for heapq to reverse order
+    if len(container) >= max_size:
+        heapq.heappushpop(container, element)
+    else:
+        heapq.heappush(container, element)
+
+
+def _get_best_dist(container: List[_Candidate]) -> _Candidate:
+    return -heapq.nlargest(1, container)[0].dist
+
+
+def _get_sorted(container: List[_Candidate]) -> List[_Candidate]:
+    return sorted(container, reverse=True)
 
 
 def dist_l2(point_a: np.ndarray, point_b: np.ndarray) -> float:
@@ -30,35 +53,6 @@ class KDTree:
         self.dim: int = data.shape[1]
         indexes = np.arange(len(data))
         self.__tree: Optional[_Node] = self.__build_tree(data, indexes)
-
-    def draw_tree(self):
-        from matplotlib import pyplot as plt
-        import matplotlib.lines as mlines
-
-        fig = plt.figure(figsize=(15, 15))
-
-        def line(p1, p2):
-            plt.plot([p1[0], p2[0]], [p1[1], p2[1]])
-
-        cur_point = (0, 0)
-
-        def draw(tree):
-            if tree is None:
-                return
-            if axis % 2 == 0:
-                x = tree.point[0]
-                cur_point[0] = x
-            else:
-                y = tree.point[1]
-                cur_point[1] = y
-            line(cur_point)
-
-        if self.dim != 2:
-            raise f"Can visualize onyl 2dim tree but {self.dim}"
-
-        plt.tight_layout()
-        plt.show()
-        plt.savefig('figure.png')
 
     def __build_tree(self, data: np.ndarray, indexes: np.ndarray, axis: int = 0) -> Optional[_Node]:
         if len(data) == 0:
@@ -82,23 +76,24 @@ class KDTree:
             right=self.__build_tree(data[middle_idx+1:], indexes[middle_idx+1:], axis=next_axis)
         )
 
-    def __neares(self, storage, root: _Node, point: np.ndarray, axis: int):
+    def __nearest(self, storage: List[_Candidate], root: _Node, point: np.ndarray, axis: int, n: int):
         if root is None:
             return
         dist = self.dist(root.point, point)
         print(point, root.point, root.idx, dist)
-        if storage['best_dist'] is None or storage['best_dist'] > dist:
-            storage['best_dist'] = dist
-            storage['node'] = root
-        if dist <= 0.000001:
+
+        _priority_push(storage, _Candidate(idx=root.idx, dist=dist), max_size=n)
+
+        if dist <= 0.000001:  # why this magic number?
             return
         dx = root.point[axis] - point[axis]
         next_axis = (axis + 1) % point.shape[0]
 
-        self.__neares(storage, root.right if dx < 0 else root.left, point, next_axis)
-        if dx**2 >= storage['best_dist']:
+        self.__nearest(storage, root.right if dx < 0 else root.left, point, next_axis, n)
+        best_dist = _get_best_dist(storage)
+        if dx**2 >= best_dist:  # what is that?
             return
-        self.__neares(storage, root.left if dx < 0 else root.right, point, next_axis)
+        self.__nearest(storage, root.left if dx < 0 else root.right, point, next_axis, n)
 
     def query(self, points: np.ndarray, n: int) -> Tuple[List[float], List[int]]:
         """query the tree for the k nearest neighbors
@@ -110,9 +105,11 @@ class KDTree:
         Returns:
             Tuple[List[float], List[int]]: list of (distances, indices) to the neighbors of the corresponding point.
         """
-        storage = {'best_dist': None}
-        self.__neares(storage, self.__tree, points, axis=0)
-        return [storage['best_dist']], [storage['node'].idx]
+        storage: List[_Candidate] = []
+        self.__nearest(storage, self.__tree, points, axis=0, n=n)
+        storage = _get_sorted(storage)
+        print(storage)
+        return [el.dist for el in storage], [el.idx for el in storage]
 
     def query_range(self):
         """query all points inside the rectangle
